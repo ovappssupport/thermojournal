@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ThermoJournal — export</title>
+<!--
+  Страница выгрузки ThermoJournal.
+
+  ЧТО ЭТО. Часы кладут данные сессии в АДРЕС этой страницы, после решётки:
+      export.html#TJ1,ru,m,Приют%2011...
+  Страница читает фрагмент, разворачивает его в полноценный CSV и отдаёт файл.
+
+  ПОЧЕМУ ДАННЫЕ ЛЕЖАТ ВО ФРАГМЕНТЕ, А НЕ В ПАРАМЕТРАХ. Всё, что стоит после
+  «#», браузер НЕ отправляет на сервер — это свойство HTTP, а не обещание
+  хостинга. То есть замеры и координаты пользователя физически не доходят до
+  того, кто эту страницу раздаёт. Никаких запросов страница тоже не делает:
+  ни аналитики, ни шрифтов, ни картинок со стороны.
+
+  ПОЧЕМУ СБОРКА ФАЙЛА ЗДЕСЬ, А НЕ НА ЧАСАХ. В ссылку помещается 8192 байта
+  (измерено на fenix7xpro 2026-08-16). Каждый байт, который часам не пришлось
+  отправлять, — это лишний замер в выгрузке: тонкий формат дал ~120 замеров на
+  ссылку вместо 63. Поэтому часы шлют только числа, а подписи столбцов, даты,
+  разделители и имя файла делаются тут.
+
+  Страница статическая: серверного кода нет вовсе, обновлять нечего. Если
+  хостинг когда-нибудь исчезнет, ссылка не пропадает — данные в ней самой, и
+  открыть её можно любой копией этого файла, хоть с диска.
+-->
+<style>
+  :root { color-scheme: light dark; }
+  body {
+    margin: 0; padding: 24px;
+    font: 16px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    background: #f6f7f8; color: #16181a;
+  }
+  @media (prefers-color-scheme: dark) {
+    body { background: #16181a; color: #e8eaed; }
+    .card { background: #202225 !important; }
+    td, th { border-color: #34373b !important; }
+  }
+  .wrap { max-width: 720px; margin: 0 auto; }
+  h1 { font-size: 20px; margin: 0 0 4px; }
+  .sub { color: #6b7075; margin: 0 0 20px; }
+  .card { background: #fff; border-radius: 12px; padding: 20px; margin-bottom: 16px; }
+  a.btn {
+    display: inline-block; background: #1a73e8; color: #fff; text-decoration: none;
+    padding: 14px 22px; border-radius: 10px; font-weight: 600;
+  }
+  a.btn:active { background: #1557b0; }
+  table { border-collapse: collapse; width: 100%; font-size: 13px; margin-top: 12px; }
+  th, td { border-bottom: 1px solid #e3e5e8; padding: 6px 8px; text-align: left; white-space: nowrap; }
+  th { font-weight: 600; }
+  .scroll { overflow-x: auto; }
+  .err { color: #c5221f; }
+  .muted { color: #6b7075; font-size: 13px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1 id="title">ThermoJournal</h1>
+  <p class="sub" id="subtitle"></p>
+  <div class="card" id="card"><p id="status">…</p></div>
+  <p class="muted" id="note"></p>
+</div>
+
+<script>
+// Подписи и форматы по языкам. Живут здесь, а не в ресурсах часов, намеренно:
+// строки локализации считаются в бюджет памяти приложения, а на fenix6 у нас
+// 128 КБ на всё. Здесь они ничего не стоят.
+var L = {
+  // Подпись со счётчиком стоит через двоеточие («Замеров: 3»), а не согласуется
+  // с числом: счётная форма в славянских языках зависит от разряда
+  // (1 замер / 2 замера / 5 замеров), и городить склонение ради подписи в шапке
+  // незачем — решение пользователя 2026-08-17.
+  en: { cols: ["Date and time","Temperature","Altitude","Pressure","Latitude","Longitude","Note"],
+        sep: ",", dec: ".", date: "ymd", ui: ["Download CSV","Measurements","Session","Nothing to show: the link carries no data."] },
+  ru: { cols: ["Дата и время","Температура","Высота","Давление","Широта","Долгота","Заметка"],
+        sep: ";", dec: ",", date: "dmy", ui: ["Скачать CSV","Замеров","Сессия","Показывать нечего: в ссылке нет данных."] },
+  uk: { cols: ["Дата і час","Температура","Висота","Тиск","Широта","Довгота","Нотатка"],
+        sep: ";", dec: ",", date: "dmy", ui: ["Завантажити CSV","Замірів","Сесія","Немає що показати: у посиланні немає даних."] },
+  de: { cols: ["Datum und Uhrzeit","Temperatur","Höhe","Luftdruck","Breite","Länge","Notiz"],
+        sep: ";", dec: ",", date: "dmy", ui: ["CSV herunterladen","Messungen","Sitzung","Nichts anzuzeigen: der Link enthält keine Daten."] },
+  fr: { cols: ["Date et heure","Température","Altitude","Pression","Latitude","Longitude","Note"],
+        sep: ";", dec: ",", date: "dmy", ui: ["Télécharger le CSV","Mesures","Série","Rien à afficher : le lien ne contient pas de données."] },
+  es: { cols: ["Fecha y hora","Temperatura","Altitud","Presión","Latitud","Longitud","Nota"],
+        sep: ";", dec: ",", date: "dmy", ui: ["Descargar CSV","Mediciones","Jornada","Nada que mostrar: el enlace no contiene datos."] },
+  it: { cols: ["Data e ora","Temperatura","Altitudine","Pressione","Latitudine","Longitudine","Nota"],
+        sep: ";", dec: ",", date: "dmy", ui: ["Scarica CSV","Misurazioni","Sessione","Niente da mostrare: il link non contiene dati."] },
+  pl: { cols: ["Data i godzina","Temperatura","Wysokość","Ciśnienie","Szerokość","Długość","Notatka"],
+        sep: ";", dec: ",", date: "dmy", ui: ["Pobierz CSV","Pomiary","Sesja","Nie ma co pokazać: link nie zawiera danych."] }
+};
+
+// Единицы подписываются в заголовке столбца — от этого файл становится
+// самоописывающимся, и значения можно слать в той системе, которая стоит у
+// человека в настройках часов.
+var UNITS = { m: ["°C", "m", "hPa"], i: ["°F", "ft", "inHg"] };
+var UNITS_RU = { m: ["°C", "м", "гПа"], i: ["°F", "фт", "inHg"] };
+
+function decodeFragment(raw) {
+  // atob даёт байты; строки у нас UTF-8, поэтому собираем обратно вручную.
+  var bin = atob(raw.replace(/-/g, "+").replace(/_/g, "/"));
+  var bytes = new Uint8Array(bin.length);
+  for (var i = 0; i < bin.length; i++) { bytes[i] = bin.charCodeAt(i); }
+  return new TextDecoder("utf-8").decode(bytes);
+}
+
+// Разбор строки CSV с кавычками по RFC 4180 — ровно то, чем их пишут часы.
+function splitRow(line) {
+  var out = [], cur = "", q = false;
+  for (var i = 0; i < line.length; i++) {
+    var ch = line[i];
+    if (q) {
+      if (ch === '"') {
+        if (line[i + 1] === '"') { cur += '"'; i++; } else { q = false; }
+      } else { cur += ch; }
+    } else if (ch === '"') { q = true; }
+    else if (ch === ",") { out.push(cur); cur = ""; }
+    else { cur += ch; }
+  }
+  out.push(cur);
+  return out;
+}
+
+function pad(n) { return n < 10 ? "0" + n : "" + n; }
+
+function formatDate(epoch, mode) {
+  var d = new Date(epoch * 1000);
+  var day = pad(d.getDate()), mon = pad(d.getMonth() + 1), year = d.getFullYear();
+  var time = pad(d.getHours()) + ":" + pad(d.getMinutes());
+  // Оба вида сортируются и распознаются таблицами как дата; «короткий формат
+  // локали» вроде 08/16 здесь не годится — Excel и Таблицы читают его
+  // по-разному и иногда превращают в текст.
+  return mode === "ymd"
+    ? year + "-" + mon + "-" + day + " " + time
+    : day + "." + mon + "." + year + " " + time;
+}
+
+function safeName(s) {
+  return (s || "").replace(/[\\/:*?"<>|]/g, " ").replace(/\s+/g, " ").trim();
+}
+
+function build(text) {
+  var lines = text.split("\n").filter(function (l) { return l.length > 0; });
+  var head = splitRow(lines[0]);
+  if (head[0] !== "TJ1") { throw new Error("unknown format: " + head[0]); }
+
+  var lang = L[head[1]] ? head[1] : "en";
+  var loc = L[lang];
+  var units = head[2] === "i" ? "i" : "m";
+  var session = head[3] || "";
+  var u = (lang === "ru" || lang === "uk") ? UNITS_RU[units] : UNITS[units];
+
+  var rows = [];
+  for (var i = 1; i < lines.length; i++) { rows.push(splitRow(lines[i])); }
+
+  // Заголовок: подпись столбца плюс единица, как и договаривались.
+  var cols = [
+    loc.cols[0],
+    loc.cols[1] + ", " + u[0],
+    loc.cols[2] + ", " + u[1],
+    loc.cols[3] + ", " + u[2],
+    loc.cols[4], loc.cols[5], loc.cols[6]
+  ];
+
+  var body = rows.map(function (r) {
+    return [
+      formatDate(parseInt(r[0], 10), loc.date),
+      num(r[1], loc.dec), num(r[2], loc.dec), num(r[3], loc.dec),
+      num(r[4], loc.dec), num(r[5], loc.dec),
+      r[6] || ""
+    ];
+  });
+
+  return { loc: loc, session: session, cols: cols, body: body,
+           first: rows.length ? parseInt(rows[0][0], 10) : null };
+}
+
+// Десятичная запятая там, где её ждёт таблица. Без этого Excel в русской
+// локали считает «20.5» текстом, а не числом.
+function num(v, dec) {
+  if (v === undefined || v === "") { return ""; }
+  return dec === "," ? v.replace(".", ",") : v;
+}
+
+function toCsv(data) {
+  var sep = data.loc.sep;
+  // Кавычки нужны только если внутри значения стоит ДЕЙСТВУЮЩИЙ разделитель,
+  // кавычка или перевод строки. Здесь была ошибка, которую поймал первый же
+  // прогон 2026-08-17: экранирование срабатывало на любую запятую, а в русской
+  // локали запятая — десятичная, и все числа уезжали как "20,5". Excel такое
+  // переваривает, но файл выглядел странно и весил больше.
+  var esc = function (v) {
+    var needs = v.indexOf(sep) >= 0 || v.indexOf('"') >= 0
+      || v.indexOf("\n") >= 0 || v.indexOf("\r") >= 0;
+    return needs ? '"' + v.replace(/"/g, '""') + '"' : v;
+  };
+  var lines = [data.cols.map(esc).join(sep)];
+  data.body.forEach(function (r) { lines.push(r.map(esc).join(sep)); });
+  // \r\n и BOM — ради Excel: без BOM он показывает кириллицу кракозябрами.
+  return "﻿" + lines.join("\r\n") + "\r\n";
+}
+
+function fileName(data) {
+  var d = data.first ? new Date(data.first * 1000) : new Date();
+  var stamp = d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate());
+  var name = safeName(data.session) || "ThermoJournal";
+  // Дата впереди: тогда файлы в папке сами выстраиваются по хронологии.
+  return stamp + " " + name + ".csv";
+}
+
+function render(data) {
+  var ui = data.loc.ui;
+  document.getElementById("subtitle").textContent =
+    (data.session ? ui[2] + ": " + data.session + " · " : "")
+    + ui[1] + ": " + data.body.length;
+
+  var csv = toCsv(data);
+  var blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+  var name = fileName(data);
+  var href = URL.createObjectURL(blob);
+
+  var card = document.getElementById("card");
+  card.innerHTML = "";
+
+  // Одна и та же ссылка сверху и под таблицей: на длинной сессии таблица
+  // уезжает за экран телефона, и возвращаться к кнопке наверх — лишний жест.
+  var button = function () {
+    var a = document.createElement("a");
+    a.className = "btn";
+    a.href = href;
+    a.download = name;
+    a.textContent = ui[0];
+    return a;
+  };
+
+  card.appendChild(button());
+
+  var fn = document.createElement("p");
+  fn.className = "muted";
+  fn.textContent = name;
+  card.appendChild(fn);
+
+  // Предпросмотр: человек должен увидеть, что увёз именно свои данные, до
+  // того как сохранит файл.
+  var wrap = document.createElement("div");
+  wrap.className = "scroll";
+  var t = document.createElement("table");
+  var tr = document.createElement("tr");
+  data.cols.forEach(function (c) {
+    var th = document.createElement("th"); th.textContent = c; tr.appendChild(th);
+  });
+  t.appendChild(tr);
+  data.body.slice(0, 12).forEach(function (r) {
+    var row = document.createElement("tr");
+    r.forEach(function (v) {
+      var td = document.createElement("td"); td.textContent = v; row.appendChild(td);
+    });
+    t.appendChild(row);
+  });
+  wrap.appendChild(t);
+  card.appendChild(wrap);
+
+  if (data.body.length > 12) {
+    var more = document.createElement("p");
+    more.className = "muted";
+    more.textContent = "… " + (data.body.length - 12);
+    card.appendChild(more);
+  }
+
+  card.appendChild(button());
+}
+
+try {
+  var raw = location.hash.slice(1);
+  if (!raw) {
+    document.getElementById("status").textContent = L.en.ui[3];
+  } else {
+    render(build(decodeFragment(raw)));
+  }
+} catch (e) {
+  document.getElementById("card").innerHTML =
+    '<p class="err">' + (e && e.message ? e.message : "broken link") + "</p>";
+}
+</script>
+</body>
+</html>
