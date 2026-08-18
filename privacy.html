@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ThermoJournal — Privacy Policy</title>
+<!--
+  Политика конфиденциальности ThermoJournal, готовая к публикации.
+
+  ГДЕ ЖИВЁТ. Заливается на GitHub Pages рядом с export.html, то есть
+  ovappssupport.github.io/thermojournal/privacy.html. Ссылка на этот адрес
+  вписывается в карточку Connect IQ Store.
+
+  ПОЧЕМУ БЕЗ ЕДИНОГО ВНЕШНЕГО ЗАПРОСА. Страница утверждает, что аналитики и
+  слежения нет. Подключи она сторонний шрифт или счётчик — утверждение стало бы
+  ложью в момент загрузки. Поэтому: ни шрифтов, ни картинок, ни скриптов со
+  стороны, ни одного fetch. Всё в этом файле.
+
+  ИСТОЧНИК ТЕКСТА. docs/privacy-policy.md — там же разбор вопроса «собираем ли
+  мы данные» и обоснование ответа для формы магазина. При правке менять ОБА
+  файла: этот и тот, иначе разъедутся молча (та же грабля, что с export.html).
+
+  ТРЕБОВАНИЕ GARMIN, из-за которого это существует: App Review Guidelines,
+  п. 3(c) — «Publish and make available your own privacy policy... You cannot
+  rely on Garmin's privacy policies».
+-->
+<style>
+  :root { color-scheme: light dark; }
+  body {
+    margin: 0; padding: 24px;
+    font: 16px/1.6 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    background: #f6f7f8; color: #16181a;
+  }
+  @media (prefers-color-scheme: dark) {
+    body { background: #16181a; color: #e8eaed; }
+    .card { background: #202225 !important; }
+    hr { border-color: #34373b !important; }
+  }
+  .wrap { max-width: 720px; margin: 0 auto; }
+  h1 { font-size: 22px; margin: 0 0 4px; }
+  h2 { font-size: 18px; margin: 28px 0 8px; }
+  h3 { font-size: 15px; margin: 20px 0 4px; }
+  .sub { color: #6b7075; margin: 0 0 20px; font-size: 14px; }
+  .card { background: #fff; border-radius: 12px; padding: 20px 24px; margin-bottom: 16px; }
+  .nav { margin: 0 0 20px; font-size: 14px; }
+  .nav a { color: #1a73e8; }
+  p { margin: 0 0 12px; }
+  hr { border: none; border-top: 1px solid #e3e5e8; margin: 32px 0; }
+  .muted { color: #6b7075; font-size: 13px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <h1>ThermoJournal</h1>
+  <p class="sub">Privacy Policy &middot; Политика конфиденциальности</p>
+  <p class="nav"><a href="#en">English</a> &middot; <a href="#ru">Русский</a></p>
+
+  <div class="card" id="en">
+    <h2>Privacy Policy</h2>
+    <p class="muted">Last updated: 18 August 2026</p>
+
+    <h3>Short version</h3>
+    <p>The app stores your measurements on your watch. Nothing leaves the watch unless you choose Export yourself, and even then the measurements are not sent to us — we have no server to send them to.</p>
+
+    <h3>What the app records</h3>
+    <p>When you take a measurement, the app saves: air temperature, altitude, barometric pressure, GPS coordinates, and the time of the measurement. You may also add your own names for sessions and individual points. All of this is stored on the watch, in storage belonging to the app.</p>
+
+    <h3>What happens when you export</h3>
+    <p>Only when you explicitly choose Export for one session. The watch packs that session into a web link and asks your phone to open it. The measurements travel in the part of the link after the <code>#</code> sign — the fragment. By the design of the web, a fragment is never sent to the server: the browser keeps it. The page you open is a plain static file with no database behind it; it reads the fragment and builds the CSV file inside your browser.</p>
+
+    <h3>So we receive nothing</h3>
+    <p>There is no account, no registration, no server of ours. We could not read your measurements even if we wanted to.</p>
+
+    <h3>What the hosting provider sees</h3>
+    <p>The page itself is hosted on GitHub Pages. Like any web host, GitHub records ordinary request logs — your IP address, the time, your browser type — when the page is fetched. It does not receive your measurements, because those stay in the fragment. These logs are GitHub's, not ours, and are governed by GitHub's own privacy policy.</p>
+
+    <h3>What the app does NOT do</h3>
+    <p>No analytics, no tracking, no advertising. Your data is not sold or shared, because it never reaches us. No data is collected about you as a person — only the measurements you took, and only on your watch.</p>
+
+    <h3>Your control</h3>
+    <p>Delete a measurement or a session on the watch and it is gone. The exported CSV exists only as the file your browser built, on your own device; delete it like any other file.</p>
+
+    <h3>Children</h3>
+    <p>The app is not directed at children and collects nothing about age or identity.</p>
+
+    <h3>Contact</h3>
+    <p>ovapps.support@gmail.com</p>
+
+    <h3>Changes</h3>
+    <p>If this policy changes, the new version will be published at this address with a new date.</p>
+  </div>
+
+  <hr>
+
+  <div class="card" id="ru">
+    <h2>Политика конфиденциальности</h2>
+    <p class="muted">Обновлено: 18 августа 2026</p>
+
+    <h3>Коротко</h3>
+    <p>Приложение хранит ваши замеры на часах. Никуда, кроме часов, они не уходят — пока вы сами не выберете «Экспорт». Но и тогда замеры не попадают к нам: у нас нет сервера, куда их можно было бы отправить.</p>
+
+    <h3>Что записывается</h3>
+    <p>При замере сохраняются: температура воздуха, высота, атмосферное давление, координаты GPS и время замера. Вы можете дополнительно задать свои названия сессиям и отдельным точкам. Всё это лежит на часах, в хранилище приложения.</p>
+
+    <h3>Что происходит при экспорте</h3>
+    <p>Только когда вы сами выбираете «Экспорт» для конкретной сессии. Часы упаковывают эту сессию в веб-ссылку и просят телефон её открыть. Замеры едут в той части ссылки, которая идёт после знака <code>#</code>, — во фрагменте. По устройству веба фрагмент на сервер не отправляется никогда: браузер оставляет его себе. Страница, которая открывается, — обычный статический файл без всякой базы за ним; она читает фрагмент и собирает файл CSV прямо в вашем браузере.</p>
+
+    <h3>То есть мы не получаем ничего</h3>
+    <p>Нет учётной записи, нет регистрации, нет нашего сервера. Мы не смогли бы прочитать ваши замеры, даже если бы захотели.</p>
+
+    <h3>Что видит хостинг</h3>
+    <p>Сама страница лежит на GitHub Pages. Как любой веб-хостинг, GitHub ведёт обычные журналы запросов — ваш IP-адрес, время, тип браузера — в момент загрузки страницы. Замеров он при этом не получает: они остаются во фрагменте. Эти журналы принадлежат GitHub, а не нам, и подчиняются его собственной политике конфиденциальности.</p>
+
+    <h3>Чего приложение НЕ делает</h3>
+    <p>Нет аналитики, слежения и рекламы. Данные не продаются и не передаются третьим лицам — просто потому, что до нас они не доходят. О вас как о человеке не собирается ничего, только сделанные вами замеры, и только на ваших часах.</p>
+
+    <h3>Что вы можете</h3>
+    <p>Удалить замер или сессию на часах — и их больше нет. Выгруженный CSV существует только как файл, который собрал ваш браузер, на вашем же устройстве; удаляется как любой другой файл.</p>
+
+    <h3>Дети</h3>
+    <p>Приложение не адресовано детям и не собирает сведений о возрасте или личности.</p>
+
+    <h3>Связь</h3>
+    <p>ovapps.support@gmail.com</p>
+
+    <h3>Изменения</h3>
+    <p>Если политика изменится, новая версия будет опубликована по этому же адресу с новой датой.</p>
+  </div>
+
+</div>
+</body>
+</html>
